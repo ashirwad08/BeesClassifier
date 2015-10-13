@@ -11,6 +11,13 @@ pathCV <- "C:/Users/M509652/Downloads/Bees Data/Images/cv"
 # ==============================================================================
 CVset <- function(path, pathCV){
         
+        
+        # Chang code below
+        # Read training label set and create CV out of that!
+        # Assign to fnames the training labels (no need to sort)
+        
+        
+        
         # Get # of files in folder
         fnames <- list.files(path, pattern="*.jpg", recursive = F)
         
@@ -45,11 +52,14 @@ CVset <- function(path, pathCV){
 
 readImages <- function(fnames){
         
+        #read by composing fnames with ".jpg"
+        
         train <- data.frame()
         system.time(
         train <- lapply(fnames, function(X){
-                temp <- data.frame(getValues(brick(paste0(path,"/",X))))
-                rbind(train, t(as.data.frame(unlist(temp))))
+                temp <- getValues(brick(paste0(path,"/",X)))
+                rbind(train, as.data.frame(cbind(t(temp[,1]),t(temp[,2]),t(temp[,3]))))
+                
         }))
         
 }
