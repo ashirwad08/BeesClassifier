@@ -1,11 +1,29 @@
+#library(dplyr)
+#library(tidyr)
+library(raster)
+
+
+path <- "C:/Users/M509652/Downloads/Bees Data/Images/train"
+pathCV <- "C:/Users/M509652/Downloads/Bees Data/Images/cv"
 
 # I. We already have a training set; create a CV set that's 25% of the 
 # training set
 # ==============================================================================
-CVset <- function(){
+CVset <- function(path, pathCV){
         
         # Get # of files in folder
-        file.count <- 
+        fnames <- list.files(path, pattern="*.jpg", recursive = F)
+        
+        # Randomly pick 25% indices of total training set
+        randInd <- runif(length(fnames)*0.25, min=1, max=length(fnames))
+        CVnames <- fnames[randInd]
+
+        # Move these files only to cross validation folder using file.rename
+        lapply(CVnames, function(X) {
+                # change this in the future to file.copy; renames messing up the index
+                # i think; isn't moving the exact % of files i want
+                file.rename(paste0(path,"/",X), paste0(pathCV,"/",X))
+        })
         
 }
 
@@ -25,11 +43,23 @@ CVset <- function(){
 ### specified in 'tol'. Ideally, we want to retain 99% of variance.
 # ==============================================================================
 
-raw.dat <- readImages('test path') 
+readImages <- function(fnames){
+        
+        train <- data.frame()
+        system.time(
+        train <- lapply(fnames, function(X){
+                temp <- data.frame(getValues(brick(paste0(path,"/",X))))
+                rbind(train, t(as.data.frame(unlist(temp))))
+        }))
+        
+}
 
-# extract cross validation set (maybe 20% because we have more features)
 
-final.dat <- principalTrain('training set', 'variation tolerance for pca')
+
+
+
+
+
 
 
 
