@@ -3,34 +3,39 @@
 library(raster)
 
 
-path <- "C:/Users/M509652/Downloads/Bees Data/Images/train"
-pathCV <- "C:/Users/M509652/Downloads/Bees Data/Images/cv"
+path <- "C:/Users/M509652/Downloads/Bees Data"
 
 # I. We already have a training set; create a CV set that's 25% of the 
 # training set
 # ==============================================================================
-CVset <- function(path, pathCV){
+CVnames <- function(path){
         
         
         # Chang code below
         # Read training label set and create CV out of that!
         # Assign to fnames the training labels (no need to sort)
+        tnames <- read.csv(paste0(path,"/","train_labels.csv"), header = T,
+                           colClasses = c('numeric','numeric'))
         
         
+        # Randomly pick 25% indices from training for cross validation
+        randInd <- runif(nrow(tnames)*0.25, min=1, max=nrow(tnames))
+        cvnames <- tnames[randInd, ]
         
-        # Get # of files in folder
-        fnames <- list.files(path, pattern="*.jpg", recursive = F)
+        #remove cv examples from train
+        tnames <- tnames[!(tnames$id %in% cvnames$id),]
         
-        # Randomly pick 25% indices of total training set
-        randInd <- runif(length(fnames)*0.25, min=1, max=length(fnames))
-        CVnames <- fnames[randInd]
-
-        # Move these files only to cross validation folder using file.rename
-        lapply(CVnames, function(X) {
-                # change this in the future to file.copy; renames messing up the index
-                # i think; isn't moving the exact % of files i want
-                file.rename(paste0(path,"/",X), paste0(pathCV,"/",X))
-        })
+#         
+#         # Get # of files in folder
+#         fnames <- list.files(path, pattern="*.jpg", recursive = F)
+#         
+#         
+#         # Move these files only to cross validation folder using file.rename
+#         lapply(CVnames, function(X) {
+#                 # change this in the future to file.copy; renames messing up the index
+#                 # i think; isn't moving the exact % of files i want
+#                 file.rename(paste0(path,"/",X), paste0(pathCV,"/",X))
+#         })
         
 }
 
@@ -50,17 +55,28 @@ CVset <- function(path, pathCV){
 ### specified in 'tol'. Ideally, we want to retain 99% of variance.
 # ==============================================================================
 
-readImages <- function(fnames){
+trainSet <- function(tnames){
         
-        #read by composing fnames with ".jpg"
-        
-        train <- data.frame()
+        #read in tnames images. This is the training set.
+        train <- matrix(0, nrow=1, ncol=200*200*3)
         system.time(
-        train <- lapply(fnames, function(X){
-                temp <- getValues(brick(paste0(path,"/",X)))
-                rbind(train, as.data.frame(cbind(t(temp[,1]),t(temp[,2]),t(temp[,3]))))
-                
-        }))
+        train <-  t(sapply(tnames$id, function(X){
+                               temp <- getValues(brick(paste0(path,"/images/train/",paste0(X,".jpg"))))
+                               c(temp[,1], temp[,2], temp[,3])
+                               }))
+        )
+        
+        
+        # Don't forget to cbind response at the end!!
+        #train <- cbind(train, tnames$genus)
+}
+
+
+# ===============================================================================
+## Dimensionality Reduction
+## Will use PCA with 99% variance retention (first run)
+# ===============================================================================
+reduceDims <- function(train){
         
 }
 
