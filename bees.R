@@ -3,7 +3,7 @@
 library(raster)
 
 
-path <- "C:/Users/M509652/Downloads/Bees Data"
+path <- "/Users/ash/Downloads/Bees Data"
 
 # I. We already have a training set; create a CV set that's 25% of the 
 # training set
@@ -77,7 +77,7 @@ trainSet <- function(tnames){
 ## Will use PCA with 99% variance retention (first run)
 # ===============================================================================
 reduceDims <- function(train){
-        
+        system.time(red.img <- prcomp(train.df[1:300,], center = T, scale. = F))
 }
 
 
