@@ -74,10 +74,27 @@ trainSet <- function(tnames){
 
 # ===============================================================================
 ## Dimensionality Reduction
-## Will use PCA with 99% variance retention (first run)
+## Will use PCA with 95% variance retention (first run)
 # ===============================================================================
 reduceDims <- function(train){
-        system.time(red.img <- prcomp(train.df[1:300,], center = T, scale. = F))
+        
+        # About an hour to perform PCA on approx. 3100 x 120000 matrix with 
+        # 99% variance retention!!!
+        system.time(
+                red.img <- prcomp(train, center = T, scale. = F, tol = 0.01)
+        )
+        
+        # Diagnostics on PCs:
+        # Screeplot shows most variation is contained in about 100 PCs
+        # Cummulative distribution plot against PCs shows that 95% of the 
+        # dataset's images variance can be explained by a lower 1150 dimensional
+        # manifold. So, now to create the lower dimensional training set, I'll
+        # multiply the 1150 PCs (eigenvectors) with the training matrix to get
+        # the corresponding projections onto the lower subspace.
+        # m x k = m x n (dataset) * n x k (selected eigenspace)
+        final.train <- train %*% red.img$rotation[,1:1150]
+        
+        
 }
 
 
