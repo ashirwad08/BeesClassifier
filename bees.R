@@ -97,21 +97,30 @@ reduceDims <- function(train){
         
 }
 
-
-
-
-
-
-
-
-
-
 # ==============================================================================
-# III. This is a classification problem, depending on many features we're able
-# to reduce to, we want to use Logistic Regression because the number of features
-# will probably be greater than the number of available training examples, 
-# assuming we want to retain most of the variance.
+# III. This is a classification problem;
+# If we've managed to reduced the number of features to an intermediate number 
+# n between 1 and 1000, then we can use an SVM implementation along with a 
+# Gaussian Kernel calculation. If there are many training examples (>50000) and
+# not as many features then we're looking at logistic regression because SVM's 
+# might run slow.
 # 
 # Can also implement a neural network to compare results.
 # ==============================================================================
-train(final.dat)
+
+train <- function(final.train){
+        # PCA has managed to reduce reduce the images to 1150 Principal Comps
+        # while retaining around 95% of the variance between images. Since we 
+        # have approximately 3100 training examples, we'll use an SVM implement
+        # ation with a Gaussian Kernel computed.
+
+        # Remember, tnames$genus corresponds to the training set classification.
+        y <- as.factor(tnames$genus)
+        
+        
+        # Going to use SVM implementation in e1701 package
+        library(e1071)
+        system.time(fit <- svm(x=final.train1, y=y, type = "C-classification", 
+                       kernel = "radial", cost = 1))
+}
+
