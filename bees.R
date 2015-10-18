@@ -1,14 +1,14 @@
 #library(dplyr)
 #library(tidyr)
 library(raster)
+library(e1071)
 
-
-path <- "/Users/ash/Downloads/Bees Data"
+main.path <- "/Users/ash/Downloads/Bees Data"
 
 # I. We already have a training set; create a CV set that's 25% of the 
 # training set
 # ==============================================================================
-CVnames <- function(path){
+getNames <- function(path){
         
         
         # Chang code below
@@ -24,18 +24,6 @@ CVnames <- function(path){
         
         #remove cv examples from train
         tnames <- tnames[!(tnames$id %in% cvnames$id),]
-        
-#         
-#         # Get # of files in folder
-#         fnames <- list.files(path, pattern="*.jpg", recursive = F)
-#         
-#         
-#         # Move these files only to cross validation folder using file.rename
-#         lapply(CVnames, function(X) {
-#                 # change this in the future to file.copy; renames messing up the index
-#                 # i think; isn't moving the exact % of files i want
-#                 file.rename(paste0(path,"/",X), paste0(pathCV,"/",X))
-#         })
         
 }
 
@@ -55,33 +43,29 @@ CVnames <- function(path){
 ### specified in 'tol'. Ideally, we want to retain 99% of variance.
 # ==============================================================================
 
-trainSet <- function(tnames){
+readImgs <- function(names){
         
-        #read in tnames images. This is the training set.
-        train <- matrix(0, nrow=1, ncol=200*200*3)
+        #read in names of images (train or cv).
+        raw.imgs <- matrix(0, nrow=1, ncol=200*200*3)
         system.time(
-        train <-  t(sapply(tnames$id, function(X){
+        raw.imgs <-  t(sapply(names$id, function(X){
                                temp <- getValues(brick(paste0(path,"/images/train/",paste0(X,".jpg"))))
                                c(temp[,1], temp[,2], temp[,3])
                                }))
         )
-        
-        
-        # Don't forget to cbind response at the end!!
-        #train <- cbind(train, tnames$genus)
 }
 
 
 # ===============================================================================
 ## Dimensionality Reduction
-## Will use PCA with 95% variance retention (first run)
+## Will use PCA with 95% variance retention (for now)
 # ===============================================================================
-reduceDims <- function(train){
+reduceDims <- function(raw.imgs){
         
-        # About an hour to perform PCA on approx. 3100 x 120000 matrix with 
-        # 99% variance retention!!!
+        # !!!WARNING!!! About an hour to perform PCA on approx. 3100 x 120000 
+        # matrix with 99% variance retention!!!
         system.time(
-                red.img <- prcomp(train, center = T, scale. = F, tol = 0.01)
+                pcs <- prcomp(raw.imgs, center = T, scale. = F, tol = 0.01)
         )
         
         # Diagnostics on PCs:
@@ -92,7 +76,10 @@ reduceDims <- function(train){
         # multiply the 1150 PCs (eigenvectors) with the training matrix to get
         # the corresponding projections onto the lower subspace.
         # m x k = m x n (dataset) * n x k (selected eigenspace)
-        final.train <- train %*% red.img$rotation[,1:1150]
+        # 
+        # *** WRITE NEW CODE *** To auto use the first k PCs based on cumm.
+        # variance cutoff
+        pcs.imgs <- raw.imgs %*% pcs$rotation[,1:1150]
         
         
 }
@@ -115,12 +102,12 @@ train <- function(final.train){
         # ation with a Gaussian Kernel computed.
 
         # Remember, tnames$genus corresponds to the training set classification.
-        y <- as.factor(tnames$genus)
+        hyp <- as.data.frame(cbind(final.train, BeeType=as.factor(tnames$genus)))
+        #y <- as.factor(tnames$genus)
         
         
         # Going to use SVM implementation in e1701 package
-        library(e1071)
-        system.time(fit <- svm(x=final.train1, y=y, type = "C-classification", 
-                       kernel = "radial", cost = 1))
+        fit <- svm(BeeType~., data=hyp, type = "C-classification", 
+                   kernel = "radial", cost = 1)
 }
 
