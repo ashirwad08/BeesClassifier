@@ -8,13 +8,13 @@ main.path <- "/Users/ash/Downloads/Bees Data"
 # I. We already have a training set; create a CV set that's 25% of the 
 # training set
 # ==============================================================================
-getNames <- function(path){
+getCVNames <- function(path){
         
         
         # Chang code below
         # Read training label set and create CV out of that!
         # Assign to fnames the training labels (no need to sort)
-        tnames <- read.csv(paste0(path,"/","train_labels.csv"), header = T,
+        tnames <- read.csv(paste0(main.path,"/","train_labels.csv"), header = T,
                            colClasses = c('numeric','numeric'))
         
         
@@ -43,16 +43,17 @@ getNames <- function(path){
 ### specified in 'tol'. Ideally, we want to retain 99% of variance.
 # ==============================================================================
 
-readImgs <- function(names){
+# names is a vector of names, path is a string pointing to folder path
+readImgs <- function(names, path){
         
         #read in names of images (train or cv).
         raw.imgs <- matrix(0, nrow=1, ncol=200*200*3)
-        system.time(
-        raw.imgs <-  t(sapply(names$id, function(X){
-                               temp <- getValues(brick(paste0(path,"/images/train/",paste0(X,".jpg"))))
+        #system.time(
+        raw.imgs <-  t(sapply(names, function(X){
+                               temp <- getValues(brick(paste0(path,"/",paste0(X,".jpg"))))
                                c(temp[,1], temp[,2], temp[,3])
                                }))
-        )
+        #)
 }
 
 
@@ -63,9 +64,9 @@ readImgs <- function(names){
 reduceDims <- function(raw.imgs){
         
         # !!!WARNING!!! About an hour to perform PCA on approx. 3100 x 120000 
-        # matrix with 99% variance retention!!!
+        # matrix with 95% variance retention!!!
         system.time(
-                pcs <- prcomp(raw.imgs, center = T, scale. = F, tol = 0.01)
+                pcs <- prcomp(raw.imgs, center = T, scale. = F, tol = 0.05)
         )
         
         # Diagnostics on PCs:
