@@ -2,6 +2,8 @@
 #library(tidyr)
 library(raster)
 library(e1071)
+library(doParallel)
+library(foreach)
 
 main.path <- "/Users/ash/Downloads/Bees Data"
 
@@ -63,11 +65,22 @@ readImgs <- function(names, path){
 # ===============================================================================
 reduceDims <- function(raw.imgs){
         
+        # Going to use a parallel computing library to simultaenuously run PCA
+        # on 2 clusters of 4 core processors on the train and test sets.
+        cl <- makeCluster(8)
+        registerDoParallel(cl)
+        
         # !!!WARNING!!! About an hour to perform PCA on approx. 3100 x 120000 
         # matrix with 95% variance retention!!!
         system.time(
-                pcs <- prcomp(raw.imgs, center = T, scale. = F, tol = 0.05)
+        pcs <- parLapply(cl, list(raw.test, raw.train), function(X){
+                prcomp(X, center = T, scale. = F, tol = 0.05)
+        })
+                #foreach(i=1:2, .combine=c) %dopar% 
+                #prcomp(raw.imgs, center = T, scale. = F, tol = 0.05)
         )
+        
+        stopCluster(cl)
         
         # Diagnostics on PCs:
         # Screeplot shows most variation is contained in about 100 PCs
@@ -77,12 +90,13 @@ reduceDims <- function(raw.imgs){
         # multiply the 1150 PCs (eigenvectors) with the training matrix to get
         # the corresponding projections onto the lower subspace.
         # m x k = m x n (dataset) * n x k (selected eigenspace)
-        # 
-        # *** WRITE NEW CODE *** To auto use the first k PCs based on cumm.
-        # variance cutoff
-        pcs.imgs <- raw.imgs %*% pcs$rotation[,1:1150]
         
+     
+        #pcs.imgs <- raw.imgs %*% pcs$rotation[,1:1150]
         
+        # Optimized training set preserving 95% of cummulative variance
+        train <- raw.train %*% pcs[[2]]$rotation[,which(summary(pcs[[2]])$importance[3,]<=0.95)]
+        test <- raw.test %*% pcs[[1]]$rotation[,1:dim(train)[2]]
 }
 
 # ==============================================================================
