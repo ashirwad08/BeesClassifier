@@ -110,19 +110,21 @@ reduceDims <- function(raw.imgs){
 # Can also implement a neural network to compare results.
 # ==============================================================================
 
-train <- function(final.train){
+train <- function(train){
         # PCA has managed to reduce reduce the images to 1150 Principal Comps
         # while retaining around 95% of the variance between images. Since we 
         # have approximately 3100 training examples, we'll use an SVM implement
         # ation with a Gaussian Kernel computed.
 
         # Remember, tnames$genus corresponds to the training set classification.
-        hyp <- as.data.frame(cbind(final.train, BeeType=as.factor(tnames$genus)))
+        hyp <- as.data.frame(cbind(train, BeeType=as.factor(tnames$genus)))
         #y <- as.factor(tnames$genus)
         
         
         # Going to use SVM implementation in e1701 package
         fit <- svm(BeeType~., data=hyp, type = "C-classification", 
-                   kernel = "radial", cost = 1)
+                   kernel = "radial", cost = 100, probability=TRUE)
+        
+        prd <- predict(fit, test)
 }
 
