@@ -77,7 +77,7 @@ trainSet <- function(tnames){
 ## Will use PCA with 99% variance retention (first run)
 # ===============================================================================
 reduceDims <- function(train){
-        
+        # Probably want to use stats::prcomp for such a large matrix
 }
 
 
