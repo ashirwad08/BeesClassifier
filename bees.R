@@ -1,7 +1,10 @@
 #library(dplyr)
 #library(tidyr)
+library(caret)
 library(raster)
+library(rgdal)
 library(e1071)
+library(doMC)
 library(doParallel)
 library(foreach)
 
@@ -9,50 +12,61 @@ main.path <- "C:/Users/m509652/Downloads/Bees Data"
 train.path <- paste0(main.path, "/images/train")
 test.path <- paste0(main.path, "/images/test")
 
-# I. We already have a training set; create a CV set that's 25% of the 
-# training set
+# I. We already have a training set; create a separate test set from it to get an 
+# idea of the Out of Sample errors.
 # ==============================================================================
-getCVNames <- function(path){
+getTestTrain <- function(path){
         
+        #set.seed(3145)
+
+        raw.names <- read.csv(paste0(main.path,"/","train_labels.csv"), 
+                                header = T,
+                           colClasses = c('character','numeric'))
         
-        # Chang code below
-        # Read training label set and create CV out of that!
-        # Assign to fnames the training labels (no need to sort)
-        train.names <- read.csv(paste0(main.path,"/","train_labels.csv"), header = T,
-                           colClasses = c('numeric','numeric'))
+        inTrain <- createDataPartition(raw.names$genus, p=0.7, list=F)
+        train.names <- raw.names[inTrain,]
+        test.names <- raw.names[-inTrain,]
         
-        
-        # Randomly pick 25% indices from training for cross validation
-        randInd <- runif(nrow(train.names)*0.25, min=1, max=nrow(train.names))
-        cvnames <- train.names[randInd, ]
-        
-        #remove cv examples from train
-        train.names <- train.names[!(train.names$id %in% cvnames$id),]
-        
-        
+        loadImages(train.names, test.names)
 }
 
 
 # ==============================================================================
-# II. Function that reads in JPGs as Rasters, and performs dimensonality
-# reduction on each image.
+# II. Function that reads in JPGs as Rasters
 ## For each JPG, it unlists the pixel RGBs and creates a matrix of training
 ## examples with pixel intensities as features
-### m is the number of training images (70% of original)
-### n is size xloc*yloc*pixeldepth;
-### features are laid out as: x_pixeldepth(1)...y_pixeldepth(2)...z_pixeldepth(3)
-### so, for rgb intensity, pixel depth is 3, for VGA it is 65,534!
-### --------------------------------------------------------------
-### Function then calls PCA to find the Principal Components of most correlated
-### colors (features). It reduces dimensions with a variance retention tolerance
-### specified in 'tol'. Ideally, we want to retain 99% of variance.
+### m is the number of images
+### n is size of each image= xloc*yloc*pixeldepth, for each pixel;
+### so, for rgb intensity, pixel depth is 3, for VGA it is 65,534, etc!
 # ==============================================================================
 
 # names is a vector of names, path is a string pointing to folder path
-readImgs <- function(names, path){
+loadImages <- function(train.names, test.names){
         
-        # TRAIN OR CV
-        #read in names of images (train or cv).
+        cl <- makeCluster(4)
+        # read train, cv, and submission test images in parallel
+        registerDoParallel(cl, cores=detectCores())
+        
+        
+        train.imgs <- matrix(0, nrow=1, ncol=200*200*3)
+        
+        system.time(
+                train.imgs <- foreach(train.names$id, 
+                                      .combine=rbind, 
+                                      .inorder=TRUE,
+                                      .export=c('getValues','brick')) %dopar% {
+                                              temp <- getValues(brick(paste0(train.path,"/",paste0(train.names$id,".jpg"))))
+                                              c(temp[,1], temp[,2], temp[,3])
+                                      }
+        )
+        
+        stopCluster(cl)
+        
+        
+        
+        
+        
+        # TRAIN 
         train.imgs <- matrix(0, nrow=1, ncol=200*200*3)
         system.time(
         train.imgs <-  t(sapply(train.names$id, function(X){
@@ -62,10 +76,10 @@ readImgs <- function(names, path){
         )
         
         
-        # CV
+        # CV (split test set to validate against)
         cv.imgs <- matrix(0, nrow=1, ncol=200*200*3)
         system.time(
-                cv.imgs <-  t(sapply(cvnames$id, function(X){
+                cv.imgs <-  t(sapply(test.names$id, function(X){
                         temp <- getValues(brick(paste0(train.path,"/",paste0(X,".jpg"))))
                         c(temp[,1], temp[,2], temp[,3])
                 }))
@@ -74,8 +88,8 @@ readImgs <- function(names, path){
         
         
         
-        # TEST
-        test.imgs <- matrix(0, nrow=1, ncol=200*200*3)
+        # TEST (submission set, unknown genera)
+        predict.imgs <- matrix(0, nrow=1, ncol=200*200*3)
         system.time(
         test.imgs <- t(sapply(list.files(test.path), function(X){
                 temp <- getValues(brick(paste0(test.path,X)))
